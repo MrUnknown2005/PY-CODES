@@ -1,0 +1,11 @@
+# Optional voice extras (speech-to-text + text-to-speech).
+# Install with:  pip install -r requirements-voice.txt
+#
+# NOTE: on very new Python versions (e.g. 3.14) some of these may not have
+# prebuilt wheels yet. If install fails, the assistant still works in text mode;
+# try these in a Python 3.11-3.13 virtual environment for voice support.
+
+faster-whisper      # offline speech-to-text
+sounddevice         # microphone capture
+numpy               # audio buffer handling
+pyttsx3             # offline text-to-speech

@@ -1,0 +1,10 @@
+# Core dependencies for the assistant (text mode: Gemini + PC control).
+# Install with:  pip install -r requirements.txt
+
+google-genai        # Gemini SDK (the new unified google-genai package)
+python-dotenv       # loads the .env file
+pyautogui           # mouse & keyboard control
+psutil              # process / system info
+PyGetWindow         # window management
+pyperclip           # clipboard access
+send2trash          # deletes go to the Recycle Bin (recoverable)
