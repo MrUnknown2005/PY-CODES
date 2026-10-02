@@ -20,12 +20,11 @@ from assistant import registry
 from io_layer import text_io, voice_output
 
 BANNER = r"""
-   ___                  _
-  |_  |                (_)
-    | | __ _ _ ____   ___ ___
-    | |/ _` | '__\ \ / / / __|
-/\__/ / (_| | |   \ V /| \__ \
-\____/ \__,_|_|    \_/ |_|___/   your PC assistant
+ __  __ _ _
+|  \/  (_) | ___ _ __   __ _
+| |\/| | | |/ _ \ '_ \ / _` |
+| |  | | | |  __/ | | | (_| |
+|_|  |_|_|_|\___|_| |_|\__,_|   your PC assistant
 """
 
 
