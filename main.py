@@ -5,6 +5,7 @@ Run it:
     python main.py --voice      # press Enter on an empty line to speak a command
     python main.py --speak      # read replies aloud (text input)
     python main.py --voice --speak   # full hands-light mode
+    python main.py --wake       # hands-free: say "Hey Darling", then your command
 
 Type 'exit' (or press Ctrl+C) to quit. Type 'reset' to clear the conversation.
 """
@@ -62,6 +63,53 @@ def _get_command(voice_mode: bool) -> str | None:
         return input("> ").strip()
 
 
+def _handle(command: str, brain, speak_replies: bool) -> bool:
+    """Process one command. Return False if the user asked to quit."""
+    if not command:
+        return True
+    low = command.lower()
+    if low in ("exit", "quit", "bye"):
+        return False
+    if low == "reset":
+        brain.reset()
+        text_io.info("(conversation cleared)")
+        return True
+
+    reply = brain.ask(command)
+    text_io.say(reply)
+    if speak_replies:
+        voice_output.speak(reply)
+    return True
+
+
+def _wake_loop(brain, speak_replies: bool) -> None:
+    """Hands-free loop: listen for the wake word, then run the spoken command."""
+    from io_layer import voice_input
+
+    print(f'Hands-free mode ON — say "{config.WAKE_WORD}" to wake me.')
+    try:
+        voice_input._get_model()  # warm up (first run may download the model)
+    except voice_input.VoiceUnavailable as exc:
+        print(f"[voice unavailable] {exc}")
+        return
+
+    try:
+        while True:
+            voice_input.listen_for_wake_word()
+            if speak_replies:
+                voice_output.speak("Yes?")
+            else:
+                text_io.info("— awake, listening for your command…")
+            command = voice_input.listen_command()
+            if not command:
+                text_io.info("(heard nothing — back to sleep)")
+                continue
+            if not _handle(command, brain, speak_replies):
+                break
+    except KeyboardInterrupt:
+        print()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Jarvis-style PC assistant")
     parser.add_argument(
@@ -70,13 +118,18 @@ def main() -> int:
     parser.add_argument(
         "--speak", action="store_true", help="read replies aloud (text-to-speech)"
     )
+    parser.add_argument(
+        "--wake",
+        action="store_true",
+        help=f'hands-free: wake on "{config.WAKE_WORD}" (implies --speak)',
+    )
     args = parser.parse_args()
 
     print(BANNER)
     if not _check_setup():
         return 1
 
-    speak_replies = args.speak or config.VOICE_OUTPUT
+    speak_replies = args.speak or args.wake or config.VOICE_OUTPUT
 
     try:
         from assistant.brain.gemini_brain import GeminiBrain
@@ -96,24 +149,17 @@ def main() -> int:
         print("Voice input ON — press Enter on an empty line to speak.")
     print("Type 'exit' to quit, 'reset' to clear the conversation.\n")
 
+    if args.wake:
+        _wake_loop(brain, speak_replies)
+        print("\nGoodbye!")
+        return 0
+
     while True:
         command = _get_command(args.voice)
         if command is None:
             break
-        if not command:
-            continue
-        low = command.lower()
-        if low in ("exit", "quit", "bye"):
+        if not _handle(command, brain, speak_replies):
             break
-        if low == "reset":
-            brain.reset()
-            text_io.info("(conversation cleared)")
-            continue
-
-        reply = brain.ask(command)
-        text_io.say(reply)
-        if speak_replies:
-            voice_output.speak(reply)
 
     print("\nGoodbye!")
     return 0

@@ -48,9 +48,9 @@ Optional voice support (speech-to-text + text-to-speech):
 pip install -r requirements-voice.txt
 ```
 
-> On brand-new Python versions (e.g. **3.14**) some voice libraries may not have
-> prebuilt wheels yet. Text mode works regardless; for voice, a Python 3.11–3.13
-> virtual environment is the smoothest path for now.
+> Voice libraries install from prebuilt wheels on Python 3.13/3.14 (fastapi-whisper
+> via ctranslate2, sounddevice, pyttsx3). Text mode works with no extra installs,
+> and voice is fully optional — the assistant falls back to typing if it's missing.
 
 ### 2. Add your Gemini API key
 
@@ -78,6 +78,7 @@ python main.py                 # type commands
 python main.py --voice         # press Enter on an empty line to speak a command
 python main.py --speak         # read replies aloud
 python main.py --voice --speak # voice in + voice out
+python main.py --wake          # hands-free: say "Hey Darling", then your command
 ```
 
 In the prompt:
@@ -85,6 +86,18 @@ In the prompt:
 - In `--voice` mode, press Enter on an **empty** line to start recording, speak,
   then press Enter again to stop.
 - `reset` clears the conversation; `exit` (or Ctrl+C) quits.
+
+### Hands-free mode ("Hey Darling")
+
+`python main.py --wake` listens continuously and sleeps until it hears the wake
+phrase, then replies "Yes?" and records your command — stopping automatically when
+you pause. Just speak; no typing needed.
+
+- The wake phrase is set by `WAKE_WORD` in `.env` (default `hey darling`).
+  Matching is lenient: the last word alone ("darling") also wakes it.
+- Speech-to-text runs **locally and offline** (faster-whisper); nothing is sent to
+  Google except the transcribed command, exactly as in typed mode.
+- The first run downloads the Whisper model once.
 
 ### Example requests
 - "What's my CPU and memory usage right now?"
@@ -154,6 +167,9 @@ assistant/
 io_layer/
   text_io.py voice_input.py voice_output.py
 ```
+
+- `voice_input.py` provides push-to-talk (`listen`), silence-stopped capture
+  (`listen_command`), and wake-word detection (`listen_for_wake_word`).
 
 ---
 

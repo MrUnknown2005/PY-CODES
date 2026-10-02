@@ -25,7 +25,7 @@ def _as_bool(value: str | None, default: bool = False) -> bool:
 # ---------------------------------------------------------------------------
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "").strip()
 # Flash models are fast, free-tier friendly, and good at tool-calling.
-GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
 
 # ---------------------------------------------------------------------------
 # Safety
@@ -42,6 +42,9 @@ MAX_STEPS: int = int(os.getenv("MAX_STEPS", "10"))
 VOICE_OUTPUT: bool = _as_bool(os.getenv("VOICE_OUTPUT"), False)
 # faster-whisper model size for speech-to-text: tiny | base | small | medium | large-v3
 WHISPER_MODEL: str = os.getenv("WHISPER_MODEL", "base").strip()
+# Wake phrase for hands-free mode (python main.py --wake). Matching is lenient:
+# the last word alone (e.g. "darling") will also trigger it.
+WAKE_WORD: str = os.getenv("WAKE_WORD", "hey darling").strip()
 
 # ---------------------------------------------------------------------------
 # Logging

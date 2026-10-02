@@ -11,6 +11,8 @@ destructive action passes through our confirmation gate first.
 """
 from __future__ import annotations
 
+import time
+
 from google import genai
 from google.genai import types
 
@@ -117,6 +119,29 @@ class GeminiBrain(Brain):
     def reset(self) -> None:
         self._history = []
 
+    def _generate(self):
+        """Call Gemini, retrying transient errors (503/429/network) briefly."""
+        last_exc: Exception | None = None
+        for attempt in range(4):
+            try:
+                return self._client.models.generate_content(
+                    model=config.GEMINI_MODEL,
+                    contents=self._history,
+                    config=self._config,
+                )
+            except Exception as exc:  # noqa: BLE001
+                last_exc = exc
+                message = str(exc)
+                transient = any(
+                    token in message
+                    for token in ("503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED",
+                                  "500", "INTERNAL", "DEADLINE_EXCEEDED", "timeout")
+                )
+                if not transient or attempt == 3:
+                    raise
+                time.sleep(2 * (attempt + 1))  # 2s, 4s, 6s
+        raise last_exc  # pragma: no cover
+
     def ask(self, user_text: str) -> str:
         self._history.append(
             types.Content(role="user", parts=[types.Part(text=user_text)])
@@ -124,11 +149,7 @@ class GeminiBrain(Brain):
 
         for _ in range(config.MAX_STEPS):
             try:
-                response = self._client.models.generate_content(
-                    model=config.GEMINI_MODEL,
-                    contents=self._history,
-                    config=self._config,
-                )
+                response = self._generate()
             except Exception as exc:  # noqa: BLE001
                 return f"(Gemini request failed: {exc})"
 
