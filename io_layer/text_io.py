@@ -3,7 +3,7 @@ from __future__ import annotations
 
 
 def say(text: str) -> None:
-    print(f"\nJarvis: {text}\n")
+    print(f"\nMilena: {text}\n")
 
 
 def info(text: str) -> None:

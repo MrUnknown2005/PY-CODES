@@ -79,9 +79,13 @@ WHISPER_COMPUTE: str = os.getenv("WHISPER_COMPUTE", "int8").strip()
 WHISPER_THREADS: int = int(os.getenv("WHISPER_THREADS", "0"))
 # Whisper decoding: 1 = greedy (fastest). Higher = slower, marginally better.
 WHISPER_BEAM: int = int(os.getenv("WHISPER_BEAM", "1"))
-# Wake phrase for hands-free mode (python main.py --wake). Matching is lenient:
-# the last word alone (e.g. "darling") will also trigger it.
-WAKE_WORD: str = os.getenv("WAKE_WORD", "hey darling").strip()
+# Wake phrase for hands-free mode (python main.py --wake). Matching is strict:
+# the whole phrase must be heard, or the utterance must be just the name.
+WAKE_WORD: str = os.getenv("WAKE_WORD", "hey mil").strip()
+# Extra spellings Whisper may produce for the name, comma-separated. "Mil" is
+# short, so it often comes back as "Mel" or "Mill" — add others as you notice
+# them in the "You said:" line.
+WAKE_WORD_ALIASES: str = os.getenv("WAKE_WORD_ALIASES", "mel,mill,mila,melina,milena").strip()
 # How long a pause (seconds) ends a spoken command in voice/wake mode.
 SILENCE_DURATION: float = float(os.getenv("SILENCE_DURATION", "0.8"))
 # Mic loudness below which input counts as silence (tune if it cuts you off).

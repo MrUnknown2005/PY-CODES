@@ -1,4 +1,4 @@
-"""Jarvis-style PC assistant — entry point.
+"""Milena — a PC assistant with voice and text control.
 
 Run it:
     python main.py              # type your commands
@@ -128,7 +128,7 @@ def _wake_loop(brain, speak_replies: bool) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Jarvis-style PC assistant")
+    parser = argparse.ArgumentParser(description="Milena — your PC assistant")
     parser.add_argument(
         "--voice", action="store_true", help="enable push-to-talk voice input"
     )

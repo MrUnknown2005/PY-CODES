@@ -1,4 +1,4 @@
-# Jarvis — a Gemini-powered PC assistant (voice + text)
+# Milena — a PC assistant with voice and text control
 
 A personal assistant for your **Windows** PC. Tell it what to do in plain English
 (typed or spoken) and it carries it out: open and close apps, control the mouse
@@ -111,8 +111,15 @@ In the prompt:
 phrase, then replies "Yes?" and records your command — stopping automatically when
 you pause. Just speak; no typing needed.
 
-- The wake phrase is set by `WAKE_WORD` in `.env` (default `hey darling`).
-  Matching is lenient: the last word alone ("darling") also wakes it.
+- The wake phrase is set by `WAKE_WORD` in `.env` (default `hey mil`).
+  Matching is strict: the whole phrase must be heard, or the utterance must be
+  just the name. That's intentional — a short name like "mil" is easy to hit by
+  accident, so merely *containing* it ("eat the meal") won't wake her.
+- Whisper often mishears short names. `WAKE_WORD_ALIASES` lists extra spellings
+  that also count (`mel`, `mill`, `milena`, …). If she stops responding, run once
+  and watch the `You said:` line to see what Whisper actually heard, then add it.
+- You can say the phrase and the command in one breath: "Hey Mil, what's my CPU
+  usage?" works.
 - Speech-to-text runs **locally and offline** (faster-whisper); nothing is sent to
   Google except the transcribed command, exactly as in typed mode.
 - The first run downloads the Whisper model once.

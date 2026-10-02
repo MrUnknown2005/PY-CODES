@@ -191,14 +191,20 @@ def listen_command(max_seconds: float = 20.0) -> str:
 def listen_for_wake_word(wake_word: str | None = None) -> bool:
     """Block until the wake phrase is heard, then return True.
 
-    Matching is lenient: the full phrase ("hey darling") OR just its last word
-    ("darling") anywhere in a heard utterance counts. Silence is skipped
-    without transcription to keep CPU use low. Raises VoiceUnavailable if the
-    audio/transcription stack can't be loaded; let KeyboardInterrupt propagate
-    to stop listening.
+    Matching is deliberately strict: the full phrase must appear (as words, not
+    as a substring), or the whole utterance must be just the final word. A short
+    name like "mil" is far too easy to hit by accident for loose matching —
+    utterances that merely *contain* it ("call Bill", "eat the meal") are
+    ignored. Silence is skipped without transcription to keep CPU use low.
+    Raises VoiceUnavailable if the audio/transcription stack can't be loaded;
+    let KeyboardInterrupt propagate to stop listening.
     """
     phrase = _normalize(wake_word or config.WAKE_WORD)
-    last_word = phrase.split()[-1] if phrase else ""
+    words = phrase.split()
+    last_word = words[-1] if words else ""
+    # Extra spellings Whisper commonly produces for the name.
+    aliases = [w for w in config.WAKE_WORD_ALIASES.split(",") if w.strip()]
+
     _get_model()  # validate / warm up the stack
 
     while True:
@@ -210,6 +216,14 @@ def listen_for_wake_word(wake_word: str | None = None) -> bool:
         heard = _normalize(_transcribe(audio))
         if not heard:
             continue
-        if (phrase and phrase in heard) or (last_word and last_word in heard.split()):
+        heard_words = heard.split()
+
+        # 1. Full phrase, with any accepted spelling of the name.
+        if any(" ".join(words[:-1] + [alias]) in heard for alias in [last_word] + aliases):
+            return True
+        # 2. The utterance is *just* the name ("Mil?" / "Mel.").
+        if len(heard_words) <= 2 and any(
+            alias in heard_words for alias in [last_word] + aliases
+        ):
             return True
         # Heard speech, but not the wake word — keep waiting.
