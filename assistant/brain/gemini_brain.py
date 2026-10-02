@@ -55,6 +55,15 @@ Environment:
 """
 
 
+def build_system_instruction() -> str:
+    """The shared system prompt, with this machine's details filled in.
+
+    Kept as a function (not a constant) so any brain can reuse the exact same
+    instructions — the local Ollama brain calls this too.
+    """
+    return _SYSTEM_INSTRUCTION.format(environment=config.environment_summary())
+
+
 def _to_schema(js: dict) -> types.Schema:
     """Convert a plain JSON-schema dict into a Gemini types.Schema."""
     jtype = js.get("type", "string")

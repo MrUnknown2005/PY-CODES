@@ -30,6 +30,8 @@ BANNER = r"""
 
 
 def _check_setup() -> bool:
+    if config.BRAIN == "ollama":
+        return True  # local brain needs no key; it reports its own errors
     if not config.GEMINI_API_KEY:
         print(
             "\n[setup needed] No Gemini API key found.\n"
@@ -39,6 +41,21 @@ def _check_setup() -> bool:
         )
         return False
     return True
+
+
+def build_brain():
+    """Create the brain selected by BRAIN in .env."""
+    if config.BRAIN == "gemini":
+        from assistant.brain.gemini_brain import GeminiBrain
+
+        return GeminiBrain(), f"Gemini ({config.GEMINI_MODEL})"
+    if config.BRAIN == "ollama":
+        from assistant.brain.ollama_brain import OllamaBrain
+
+        return OllamaBrain(), f"local ({config.OLLAMA_MODEL})"
+    raise RuntimeError(
+        f"Unknown BRAIN '{config.BRAIN}' in .env — use 'ollama' or 'gemini'."
+    )
 
 
 def _get_command(voice_mode: bool) -> str | None:
@@ -132,14 +149,12 @@ def main() -> int:
     speak_replies = args.speak or args.wake or config.VOICE_OUTPUT
 
     try:
-        from assistant.brain.gemini_brain import GeminiBrain
-
-        brain = GeminiBrain()
+        brain, brain_label = build_brain()
     except Exception as exc:  # noqa: BLE001
         print(f"[could not start the brain] {exc}")
         return 1
 
-    print(f"Loaded {len(registry.all_skills())} skills. Model: {config.GEMINI_MODEL}")
+    print(f"Loaded {len(registry.all_skills())} skills. Brain: {brain_label}")
     print(
         "Confirmation for risky actions is "
         + ("ON" if config.CONFIRM_DESTRUCTIVE else "OFF")

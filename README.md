@@ -16,17 +16,19 @@ get the job done — always showing you the code first.
 
 ```
  voice ──(speech-to-text)──┐
-                           ├──► Gemini (the brain) ──► picks a skill ──► confirm? ──► runs it
- typing ───────────────────┘          ▲                                   │
-                                       └──────── result fed back ─────────┘
+                           ├──► the brain ──► picks a skill ──► confirm? ──► runs it
+ typing ───────────────────┘        ▲                            │
+                                    └──── result fed back ───────┘
 ```
 
-- **Brain:** Google **Gemini** (free tier). It decides *which* skill to run with
-  *which* arguments, and can chain several steps. It sits behind a small `Brain`
-  interface, so a local model or another provider can be swapped in later without
-  touching any skill.
+- **Brain:** swappable, chosen with `BRAIN` in `.env`:
+  - **`ollama`** (default) — a model running **on your own PC**. Free forever,
+    offline, **no API key and no usage cap whatsoever**. Recommended.
+  - **`gemini`** — Google's cloud API. Smarter and better at complex,
+    multi-step requests, but the free tier allows only a small number of
+    requests per day and needs internet.
 - **Skills:** small Python functions registered with an `@skill` decorator
-  (`assistant/skills/`). Each advertises itself to Gemini automatically.
+  (`assistant/skills/`). Each advertises itself to the brain automatically.
 - **Safety:** skills marked *destructive* are confirmed before running; deletes go
   to the **Recycle Bin**; system folders are protected; every action is logged.
 - **Voice** is optional and fully isolated — the assistant runs in text mode even
@@ -52,7 +54,22 @@ pip install -r requirements-voice.txt
 > via ctranslate2, sounddevice, pyttsx3). Text mode works with no extra installs,
 > and voice is fully optional — the assistant falls back to typing if it's missing.
 
-### 2. Add your Gemini API key
+### 2. Pick your brain
+
+**Option A — local, unlimited, free (recommended)**
+
+1. Install [Ollama](https://ollama.com/download) (Windows installer; it runs in
+   the background automatically).
+2. Download a model that supports tool calling:
+
+   ```bash
+   ollama pull qwen2.5:7b
+   ```
+
+3. That's it — `BRAIN=ollama` is already the default. No key, no account, no
+   internet needed at runtime, and **no limit on how much you can ask**.
+
+**Option B — Gemini (cloud, smarter, rate-limited)**
 
 1. Get a free key: <https://aistudio.google.com/apikey>
 2. Copy the template and edit it:
@@ -61,9 +78,10 @@ pip install -r requirements-voice.txt
    copy .env.example .env
    ```
 
-3. Put your key in `.env`:
+3. Set your key and switch brains in `.env`:
 
    ```
+   BRAIN=gemini
    GEMINI_API_KEY=your_key_here
    ```
 
@@ -175,8 +193,37 @@ io_layer/
 
 ## Notes & limits
 - Windows-only (uses `os.startfile`, `shutdown`, `LockWorkStation`, media keys).
-- Gemini's free tier has generous but real rate limits, and requests go to Google.
+- The local brain needs a few GB of disk for the model, and quality depends on
+  the model size you pick (see below).
+- Gemini's free tier has real rate limits, and requests go to Google.
 - This is a personal-use tool. Review `run_python`/shell actions before approving.
+
+---
+
+## Which brain, and which model?
+
+| | Local (Ollama) | Gemini (cloud) |
+|---|---|---|
+| Cost | **Free forever** | Free tier, then paid |
+| Usage limit | **None** | ~20 requests/day per model on the free tier |
+| Internet | Not needed | Required |
+| Privacy | Nothing leaves your PC | Commands+results go to Google |
+| Quality | Good | Better at complex/multi-step requests |
+| Speed | Fast after the first (model load) call | Fast, but network-bound |
+
+**Recommended setup:** run local as your everyday brain (`BRAIN=ollama`) and
+flip to `BRAIN=gemini` when you hit something the local model fumbles.
+
+Local model size matters. With an 8 GB GPU:
+
+| Model | Disk | Notes |
+|---|---|---|
+| `qwen2.5:3b` | ~2 GB | Fastest; weaker at chaining skills |
+| **`qwen2.5:7b`** | **~4.7 GB** | **Best balance; fits in 8 GB VRAM (`OLLAMA_MODEL` default)** |
+| `qwen2.5:14b` | ~9 GB | Smarter, but spills out of VRAM → slower |
+
+Whatever you pick, pull it first (`ollama pull qwen2.5:14b`), then set
+`OLLAMA_MODEL=qwen2.5:14b` in `.env`.
 
 ---
 

@@ -21,7 +21,29 @@ def _as_bool(value: str | None, default: bool = False) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Gemini (the "brain")
+# Which brain to use
+# ---------------------------------------------------------------------------
+# "ollama" = a local model on your own PC. Free forever, offline, unlimited,
+# no API key, no daily cap. Recommended.
+# "gemini" = Google's cloud API. Smarter, but the free tier has a small
+# daily request cap and needs internet.
+BRAIN: str = os.getenv("BRAIN", "ollama").strip().lower()
+
+
+# ---------------------------------------------------------------------------
+# Ollama (local brain — no key, no limits)
+# ---------------------------------------------------------------------------
+OLLAMA_HOST: str = os.getenv("OLLAMA_HOST", "http://localhost:11434").strip()
+# Must be a model that supports tool calling. Good 8 GB-VRAM choices:
+#   qwen2.5:7b        (balanced; default)
+#   qwen2.5:14b       (better, may spill to CPU/RAM on 8 GB VRAM)
+#   llama3.1:8b       (also fine at tool calling)
+OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "qwen2.5:7b").strip()
+# Lower = more predictable tool calls. 0.2 is a good assistant default.
+OLLAMA_TEMPERATURE: float = float(os.getenv("OLLAMA_TEMPERATURE", "0.2"))
+
+# ---------------------------------------------------------------------------
+# Gemini (the optional cloud brain)
 # ---------------------------------------------------------------------------
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "").strip()
 # Flash models are fast, free-tier friendly, and good at tool-calling.
