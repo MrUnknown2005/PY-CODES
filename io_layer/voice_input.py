@@ -50,15 +50,27 @@ def _get_model():
             f"faster-whisper not available: {exc}. "
             "Install voice extras: pip install -r requirements-voice.txt"
         ) from exc
-    # CPU int8 keeps it light; adjust in config via WHISPER_MODEL.
-    _model = WhisperModel(config.WHISPER_MODEL, device="cpu", compute_type="int8")
+    # CPU int8 keeps it light; model/compute/threads are configurable.
+    threads = config.WHISPER_THREADS or None  # None -> ctranslate2 auto (all cores)
+    _model = WhisperModel(
+        config.WHISPER_MODEL,
+        device="cpu",
+        compute_type=config.WHISPER_COMPUTE,
+        cpu_threads=threads or 0,
+    )
     return _model
 
 
 def _transcribe(audio) -> str:
     """Run the cached Whisper model over a mono float32 numpy array."""
     model = _get_model()
-    segments, _info = model.transcribe(audio, language="en")
+    segments, _info = model.transcribe(
+        audio,
+        language="en",
+        beam_size=config.WHISPER_BEAM,
+        # Only ever one language, so skip the language-detection pass entirely.
+        condition_on_previous_text=False,
+    )
     return " ".join(seg.text for seg in segments).strip()
 
 
@@ -70,15 +82,21 @@ def _normalize(text: str) -> str:
 
 def _record_until_silence(
     max_seconds: float = 20.0,
-    silence_threshold: float = 0.015,
-    silence_duration: float = 1.0,
+    silence_threshold: float | None = None,
+    silence_duration: float | None = None,
     start_timeout: float = 8.0,
 ):
     """Record one utterance, stopping after a stretch of silence.
 
     Returns a mono float32 numpy array, or None if nobody spoke before
     ``start_timeout`` elapsed. Raises VoiceUnavailable if audio can't load.
+
+    The silence threshold/duration default to the settings in config.py.
     """
+    if silence_threshold is None:
+        silence_threshold = config.SILENCE_THRESHOLD
+    if silence_duration is None:
+        silence_duration = config.SILENCE_DURATION
     np, sd = _audio_modules()
 
     block_dur = 0.1
@@ -161,7 +179,7 @@ def listen_command(max_seconds: float = 20.0) -> str:
     """
     _get_model()  # validate the stack up front
     print("🎙  Listening… (speak, then pause)")
-    audio = _record_until_silence(max_seconds=max_seconds, silence_duration=1.0)
+    audio = _record_until_silence(max_seconds=max_seconds)
     if audio is None or len(audio) == 0:
         return ""
     text = _transcribe(audio)

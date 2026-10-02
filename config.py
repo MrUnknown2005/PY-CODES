@@ -25,7 +25,14 @@ def _as_bool(value: str | None, default: bool = False) -> bool:
 # ---------------------------------------------------------------------------
 GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "").strip()
 # Flash models are fast, free-tier friendly, and good at tool-calling.
-GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.8-flash").strip()
+# Each model has its OWN free-tier daily quota, so switching models buys more
+# requests. gemini-3.6-flash measured fastest for tool-calling in our tests.
+GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3.6-flash").strip()
+# Gemini 3.x "thinks" before replying, which adds several seconds of latency.
+# 0 = no thinking (fastest, best for simple PC commands). Raise it (e.g. 512)
+# for harder multi-step reasoning. -1 = don't send the setting at all (for
+# models that don't support it).
+GEMINI_THINKING_BUDGET: int = int(os.getenv("GEMINI_THINKING_BUDGET", "0"))
 
 # ---------------------------------------------------------------------------
 # Safety
@@ -40,11 +47,23 @@ MAX_STEPS: int = int(os.getenv("MAX_STEPS", "10"))
 # ---------------------------------------------------------------------------
 # Speak replies aloud (needs the optional voice extras installed).
 VOICE_OUTPUT: bool = _as_bool(os.getenv("VOICE_OUTPUT"), False)
-# faster-whisper model size for speech-to-text: tiny | base | small | medium | large-v3
-WHISPER_MODEL: str = os.getenv("WHISPER_MODEL", "base").strip()
+# faster-whisper speech-to-text. The ".en" models are English-only: faster AND
+# more accurate for English commands (no language guessing). tiny.en is fastest
+# but less accurate; base.en is the sweet spot; small.en is more accurate, slower.
+WHISPER_MODEL: str = os.getenv("WHISPER_MODEL", "base.en").strip()
+# ctranslate2 compute type: int8 (light/fast) | int8_float32 | float32 (slow).
+WHISPER_COMPUTE: str = os.getenv("WHISPER_COMPUTE", "int8").strip()
+# CPU threads for transcription; 0 = auto (all logical cores).
+WHISPER_THREADS: int = int(os.getenv("WHISPER_THREADS", "0"))
+# Whisper decoding: 1 = greedy (fastest). Higher = slower, marginally better.
+WHISPER_BEAM: int = int(os.getenv("WHISPER_BEAM", "1"))
 # Wake phrase for hands-free mode (python main.py --wake). Matching is lenient:
 # the last word alone (e.g. "darling") will also trigger it.
 WAKE_WORD: str = os.getenv("WAKE_WORD", "hey darling").strip()
+# How long a pause (seconds) ends a spoken command in voice/wake mode.
+SILENCE_DURATION: float = float(os.getenv("SILENCE_DURATION", "0.8"))
+# Mic loudness below which input counts as silence (tune if it cuts you off).
+SILENCE_THRESHOLD: float = float(os.getenv("SILENCE_THRESHOLD", "0.015"))
 
 # ---------------------------------------------------------------------------
 # Logging

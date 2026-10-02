@@ -104,7 +104,7 @@ class GeminiBrain(Brain):
                 "key from https://aistudio.google.com/apikey"
             )
         self._client = genai.Client(api_key=config.GEMINI_API_KEY)
-        self._config = types.GenerateContentConfig(
+        cfg_kwargs = dict(
             system_instruction=_SYSTEM_INSTRUCTION.format(
                 environment=config.environment_summary()
             ),
@@ -114,13 +114,23 @@ class GeminiBrain(Brain):
                 disable=True
             ),
         )
+        # Disable (or limit) "thinking" to cut latency on simple commands.
+        if config.GEMINI_THINKING_BUDGET >= 0:
+            cfg_kwargs["thinking_config"] = types.ThinkingConfig(
+                thinking_budget=config.GEMINI_THINKING_BUDGET
+            )
+        self._config = types.GenerateContentConfig(**cfg_kwargs)
         self._history: list[types.Content] = []
 
     def reset(self) -> None:
         self._history = []
 
     def _generate(self):
-        """Call Gemini, retrying transient errors (503/429/network) briefly."""
+        """Call Gemini, retrying *transient* errors briefly.
+
+        Per-minute rate limits and demand spikes are worth retrying; a per-day
+        quota exhaustion is not (waiting seconds won't refill a daily bucket).
+        """
         last_exc: Exception | None = None
         for attempt in range(4):
             try:
@@ -132,6 +142,12 @@ class GeminiBrain(Brain):
             except Exception as exc:  # noqa: BLE001
                 last_exc = exc
                 message = str(exc)
+                # Fail fast on per-DAY quota (waiting seconds won't refill it),
+                # whether it surfaces as a RuntimeError or gRPC RESOURCE_EXHAUSTED.
+                if "PerDay" in message:
+                    if isinstance(exc, RuntimeError):
+                        raise
+                    raise RuntimeError(self._quota_message(message)) from exc
                 transient = any(
                     token in message
                     for token in ("503", "UNAVAILABLE", "429", "RESOURCE_EXHAUSTED",
@@ -141,6 +157,17 @@ class GeminiBrain(Brain):
                     raise
                 time.sleep(2 * (attempt + 1))  # 2s, 4s, 6s
         raise last_exc  # pragma: no cover
+
+    @staticmethod
+    def _quota_message(raw: str) -> str:
+        return (
+            "Daily free-tier quota reached for " + config.GEMINI_MODEL + ". "
+            "The Gemini free tier allows only a small number of requests per day "
+            "per model — it resets at midnight Pacific. To keep going now, set a "
+            "different GEMINI_MODEL in .env (e.g. gemini-3.6-flash or "
+            "gemini-3.1-flash-lite-preview — each model has its own daily bucket), "
+            "or enable billing in Google AI Studio. (" + raw[:180] + ")"
+        )
 
     def ask(self, user_text: str) -> str:
         self._history.append(

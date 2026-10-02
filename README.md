@@ -177,3 +177,37 @@ io_layer/
 - Windows-only (uses `os.startfile`, `shutdown`, `LockWorkStation`, media keys).
 - Gemini's free tier has generous but real rate limits, and requests go to Google.
 - This is a personal-use tool. Review `run_python`/shell actions before approving.
+
+---
+
+## Making it faster
+
+Two things dominate the delay, and both are tunable in `.env`:
+
+**1. The Gemini free tier (the big one).** The free tier allows only a **small
+number of requests per day, per model** (we hit `limit: 20` on `gemini-3.8-flash`).
+Once you exhaust it, requests fail until **midnight Pacific**. Each model has its
+**own** daily bucket, so switching `GEMINI_MODEL` gives you a fresh allowance. The
+assistant now tells you clearly when the daily quota is hit, instead of retrying.
+- Fastest measured model with tools: **`gemini-3.6-flash`** (default).
+- Other fresh buckets: `gemini-3.1-flash-lite-preview`, `gemini-3.5-flash-lite`.
+- Raise the ceiling: enable billing in Google AI Studio.
+
+**2. "Thinking" latency.** Gemini 3.x silently "thinks" before every reply, adding
+several seconds. `GEMINI_THINKING_BUDGET=0` disables it — right for short PC
+commands. Set `512`+ if you want better multi-step reasoning.
+
+**3. Speech-to-text.** Local and offline, but the model choice matters:
+
+| Setting | Effect |
+|---|---|
+| `WHISPER_MODEL=base.en` | English-only → **~2× faster** than multilingual `base` *and* more accurate for English. `tiny.en` is faster still but mangles words ("iPad" for "Notepad"). |
+| `WHISPER_BEAM=1` | Greedy decoding — fastest. Higher is slower. |
+| `WHISPER_THREADS` | `0` = use all CPU cores. |
+
+In `--wake` mode, Whisper runs **twice** per exchange (once for the wake phrase,
+once for your command), so each tweak is felt twice. The pause that ends your
+command (`SILENCE_DURATION`, default 0.8s) also adds a fixed wait — lower it if
+you're comfortable with a shorter window.
+
+Typical result after tuning: a spoken command round-trips in **~4–5s**.
